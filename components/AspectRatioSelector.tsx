@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { AspectRatio } from '../types';
 import { ASPECT_RATIOS } from '../constants';
@@ -6,6 +5,7 @@ import { ASPECT_RATIOS } from '../constants';
 interface AspectRatioSelectorProps {
   selected: AspectRatio;
   onSelect: (ratio: AspectRatio) => void;
+  ratios?: AspectRatio[];
 }
 
 const ratioToClass: Record<AspectRatio, string> = {
@@ -16,12 +16,12 @@ const ratioToClass: Record<AspectRatio, string> = {
   '3:4': 'w-7.5 h-10',
 };
 
-export const AspectRatioSelector: React.FC<AspectRatioSelectorProps> = ({ selected, onSelect }) => {
+export const AspectRatioSelector: React.FC<AspectRatioSelectorProps> = ({ selected, onSelect, ratios = ASPECT_RATIOS }) => {
   return (
     <div>
       <label className="block text-sm font-medium text-slate-300 mb-2">Aspect Ratio</label>
       <div className="flex items-end justify-between gap-2">
-        {ASPECT_RATIOS.map((ratio) => (
+        {ratios.map((ratio) => (
           <div key={ratio} className="flex flex-col items-center gap-1.5">
             <button
               onClick={() => onSelect(ratio)}

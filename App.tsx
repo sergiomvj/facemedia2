@@ -4,7 +4,7 @@ import { ControlPanel } from './components/ControlPanel';
 import { MediaDisplay } from './components/MediaDisplay';
 import { Header } from './components/Header';
 import { GalleryModal } from './components/GalleryModal';
-import { AppState, GenerationResult, StoredCreation, AspectRatio } from './types';
+import { AppState, GenerationResult, StoredCreation, ImageHistoryItem } from './types';
 import * as geminiService from './services/geminiService';
 import * as dbService from './services/dbService';
 
@@ -15,6 +15,9 @@ const initialState: AppState = {
   aspectRatio: '1:1',
   baseImage: null,
   blendImage: null,
+  videoAspectRatio: '16:9',
+  videoDuration: 4,
+  imageHistory: [],
 };
 
 const App: React.FC = () => {
@@ -44,6 +47,8 @@ const App: React.FC = () => {
         generationResult = await geminiService.generateVideo(
           appState.prompt,
           appState.baseImage?.file || null,
+          appState.videoAspectRatio,
+          appState.videoDuration,
           (message) => setLoadingMessage(message)
         );
       } else {
@@ -65,18 +70,29 @@ const App: React.FC = () => {
       }
 
       if (generationResult) {
-        setResult(generationResult);
+        const { imageHistory, ...stateToSave } = appState;
         const creationToSave: Omit<StoredCreation, 'id'> = {
           timestamp: Date.now(),
-          state: appState,
+          state: stateToSave,
           result: generationResult,
         };
         await dbService.addCreation(creationToSave);
+        
+        setResult(generationResult);
+
+        if (generationResult.mediaType === 'image') {
+            setAppState(prev => ({
+                ...prev,
+                imageHistory: [
+                    { mediaUrl: generationResult.mediaUrl, prompt: appState.prompt },
+                    ...prev.imageHistory
+                ]
+            }));
+        }
       }
     } catch (error) {
       console.error('Generation failed:', error);
       setLoadingMessage(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      // Keep the error message for a few seconds before clearing
       setTimeout(() => {
           if(loadingMessage.startsWith("Error")) setLoadingMessage('');
       }, 5000);
@@ -97,6 +113,7 @@ const App: React.FC = () => {
       reader.onloadend = () => {
         setAppState(prev => ({
           ...initialState,
+          imageHistory: prev.imageHistory, // Preserve history
           mode: 'Image',
           baseImage: { dataUrl: reader.result as string, file },
         }));
@@ -107,9 +124,35 @@ const App: React.FC = () => {
       console.error("Failed to use image as base:", error);
     }
   }, []);
+
+  const handleUseFromHistory = useCallback(async (item: ImageHistoryItem) => {
+    try {
+        const response = await fetch(item.mediaUrl);
+        const blob = await response.blob();
+        const file = new File([blob], "history_base.png", { type: blob.type });
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setAppState(prev => ({
+                ...initialState,
+                imageHistory: prev.imageHistory, // Preserve history
+                mode: 'Image',
+                prompt: item.prompt,
+                baseImage: { dataUrl: reader.result as string, file },
+            }));
+            setResult(null);
+        };
+        reader.readAsDataURL(file);
+    } catch (error) {
+        console.error("Failed to use image from history:", error);
+    }
+  }, []);
   
   const reloadCreation = useCallback((creation: StoredCreation) => {
-    setAppState(creation.state);
+    setAppState(prev => ({
+        ...initialState,
+        ...creation.state,
+        imageHistory: prev.imageHistory, // Preserve history
+    }));
     setResult(creation.result);
     setIsGalleryOpen(false);
   }, []);
@@ -126,12 +169,35 @@ const App: React.FC = () => {
           onGenerate={handleGenerate}
           onClearAll={clearAll}
         />
-        <MediaDisplay
-          result={result}
-          isLoading={isLoading}
-          loadingMessage={loadingMessage}
-          onUseAsBase={handleUseAsBase}
-        />
+        <div className="flex flex-col gap-8">
+            <MediaDisplay
+              result={result}
+              isLoading={isLoading}
+              loadingMessage={loadingMessage}
+              onUseAsBase={handleUseAsBase}
+            />
+            {appState.imageHistory.length > 0 && (
+              <div className="bg-slate-800 p-4 rounded-lg shadow-lg">
+                <h3 className="text-lg font-semibold mb-4 text-slate-300">Image History</h3>
+                <ul className="space-y-4 max-h-96 overflow-y-auto pr-2">
+                  {appState.imageHistory.map((item, index) => (
+                    <li key={`${item.mediaUrl}-${index}`} className="flex items-center gap-4 bg-slate-850 p-2 rounded-md">
+                      <img src={item.mediaUrl} alt="History thumbnail" className="w-16 h-16 object-cover rounded-md flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-slate-400 truncate" title={item.prompt}>{item.prompt || 'No prompt provided'}</p>
+                      </div>
+                      <button
+                        onClick={() => handleUseFromHistory(item)}
+                        className="px-3 py-1.5 bg-slate-700 hover:bg-indigo-600 rounded-md text-xs font-medium transition-colors whitespace-nowrap"
+                      >
+                        Use as Base
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+        </div>
       </main>
       {isGalleryOpen && (
         <GalleryModal

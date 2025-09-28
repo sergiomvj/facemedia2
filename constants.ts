@@ -1,7 +1,10 @@
-
 import { AspectRatio, PromptHelperLanguage } from './types';
 
 export const ASPECT_RATIOS: AspectRatio[] = ['1:1', '16:9', '9:16', '4:3', '3:4'];
+export const VIDEO_ASPECT_RATIOS: AspectRatio[] = ['16:9', '9:16', '1:1', '4:3', '3:4'];
+
+export const MIN_VIDEO_DURATION = 2;
+export const MAX_VIDEO_DURATION = 16;
 
 export const VIDEO_POLLING_MESSAGES = [
   "Warming up the AI engines...",

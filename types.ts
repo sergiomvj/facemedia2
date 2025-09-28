@@ -14,6 +14,9 @@ export interface AppState {
   aspectRatio: AspectRatio;
   baseImage: ImageFile | null;
   blendImage: ImageFile | null;
+  videoAspectRatio: AspectRatio;
+  videoDuration: number;
+  imageHistory: ImageHistoryItem[];
 }
 
 export interface GenerationResult {
@@ -25,8 +28,13 @@ export interface GenerationResult {
 export interface StoredCreation {
   id: number;
   timestamp: number;
-  state: AppState;
+  state: Omit<AppState, 'imageHistory'>;
   result: GenerationResult;
+}
+
+export interface ImageHistoryItem {
+  mediaUrl: string;
+  prompt: string;
 }
 
 export type PromptHelperLanguage = 'EN' | 'PT-BR';

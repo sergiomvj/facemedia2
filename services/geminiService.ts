@@ -83,6 +83,8 @@ export const editImage = async (
 export const generateVideo = async (
   prompt: string,
   baseImage: File | null,
+  aspectRatio: AspectRatio,
+  duration: number,
   onProgress: (message: string) => void
 ): Promise<GenerationResult> => {
   let imagePayload;
@@ -104,6 +106,8 @@ export const generateVideo = async (
     ...(imagePayload && { image: imagePayload }),
     config: {
       numberOfVideos: 1,
+      aspectRatio: aspectRatio as "1:1" | "3:4" | "4:3" | "9:16" | "16:9",
+      durationSeconds: duration,
     }
   });
 

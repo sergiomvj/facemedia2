@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { AppState } from '../types';
 import { ModeToggle } from './ModeToggle';
@@ -6,8 +5,10 @@ import { ImageUploader } from './ImageUploader';
 import { AspectRatioSelector } from './AspectRatioSelector';
 import { PromptEditorModal } from './PromptEditorModal';
 import { PromptHelperModal } from './PromptHelperModal';
-import { SpinnerIcon, ExpandIcon, LightbulbIcon, TranslateIcon } from './icons/Icons';
+import { SpinnerIcon, ExpandIcon, LightbulbIcon, TranslateIcon, ImageIcon } from './icons/Icons';
 import * as geminiService from '../services/geminiService';
+import { DurationSlider } from './DurationSlider';
+import { MAX_VIDEO_DURATION, MIN_VIDEO_DURATION, VIDEO_ASPECT_RATIOS } from '../constants';
 
 interface ControlPanelProps {
   appState: AppState;
@@ -24,7 +25,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   onGenerate,
   onClearAll,
 }) => {
-  const { mode, prompt, negativePrompt, aspectRatio, baseImage, blendImage } = appState;
+  const { mode, prompt, negativePrompt, aspectRatio, baseImage, blendImage, videoAspectRatio, videoDuration } = appState;
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isHelperOpen, setIsHelperOpen] = useState(false);
   const [isTranslating, setIsTranslating] = useState({ prompt: false, negative: false });
@@ -54,17 +55,30 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
       <ModeToggle mode={mode} onModeChange={(newMode) => handleStateChange('mode', newMode)} />
       
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <ImageUploader
-          label="Base Image"
-          image={baseImage}
-          onImageChange={(img) => handleStateChange('baseImage', img)}
-        />
-        {mode === 'Image' && isEditMode && (
+        <div className={mode === 'Image' ? '' : 'sm:col-span-2'}>
           <ImageUploader
-            label="Blend Image (Optional)"
-            image={blendImage}
-            onImageChange={(img) => handleStateChange('blendImage', img)}
+            label="Base Image"
+            image={baseImage}
+            onImageChange={(img) => handleStateChange('baseImage', img)}
           />
+        </div>
+
+        {mode === 'Image' && (
+          isEditMode ? (
+            <ImageUploader
+              label="Blend Image (Optional)"
+              image={blendImage}
+              onImageChange={(img) => handleStateChange('blendImage', img)}
+            />
+          ) : (
+            <div>
+              <label className="block text-sm font-medium text-slate-400 mb-1">Blend Image</label>
+              <div className="flex flex-col text-center justify-center items-center w-full h-32 px-6 pt-5 pb-6 border-2 border-slate-700 border-dashed rounded-md">
+                <ImageIcon className="mx-auto h-8 w-8 text-slate-500 mb-2" />
+                <p className="text-xs text-slate-500">Upload a Base Image to enable blending.</p>
+              </div>
+            </div>
+          )
         )}
       </div>
 
@@ -121,6 +135,22 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
           selected={aspectRatio}
           onSelect={(val) => handleStateChange('aspectRatio', val)}
         />
+      )}
+
+      {mode === 'Video' && (
+        <div className="space-y-6 border-t border-slate-700 pt-6 mt-6">
+            <AspectRatioSelector
+              selected={videoAspectRatio}
+              onSelect={(val) => handleStateChange('videoAspectRatio', val)}
+              ratios={VIDEO_ASPECT_RATIOS}
+            />
+            <DurationSlider
+              value={videoDuration}
+              onChange={(val) => handleStateChange('videoDuration', val)}
+              min={MIN_VIDEO_DURATION}
+              max={MAX_VIDEO_DURATION}
+            />
+        </div>
       )}
 
       <div className="flex flex-col sm:flex-row gap-4 mt-2">
